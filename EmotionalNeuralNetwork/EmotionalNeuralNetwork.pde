@@ -1,0 +1,224 @@
+// ═════════════════════════════════════════════════════════════════════════════
+//  情感宇宙  Emotional Universe
+//  Inter-Emotional 畢業創作展 — 第四件互動數位裝置
+//
+//  概念：每位玩家都是浩瀚宇宙中的一顆流浪星球（Wandering Planet）
+//        當流浪星球彼此相遇，便在情感宇宙中產生情感的連結
+//        本作品呈現情感宇宙（Emotional Universe）中的情感微互動（Micro-Interaction）
+//
+//  技術棧：Processing 4 + Kinect4WinSDK（Xbox 360 Kinect Model 1414）
+//
+//  ── 使用前請確認 ───────────────────────────────────────────────────────────
+//  1. Processing Library Manager 安裝「Kinect4WinSDK」
+//  2. Microsoft Kinect SDK v1.8 已安裝（kinect.microsoft.com）
+//  3. Kinect 已透過 AC 轉接器接上 USB
+//
+//  ── 模擬模式（無 Kinect 時）───────────────────────────────────────────────
+//  - 滑鼠控制第一顆流浪星球
+//  - 右鍵：新增自主漫遊星球（最多 6 顆）
+//  - 左鍵：強制放電脈衝
+//  - C：重置星球
+//  - K：切換 Kinect 模式
+// ═════════════════════════════════════════════════════════════════════════════
+
+import kinect4WinSDK.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+// ── 全域設定 ──────────────────────────────────────────────────────────────────
+boolean USE_KINECT    = true;
+final int MAX_NEURONS = 6;           // 最多同時追蹤 6 顆流浪星球
+final float MAX_SYN_DIST = 370;      // 情感連結觸發距離（像素）
+
+// ── 全域系統物件 ──────────────────────────────────────────────────────────────
+Kinect kinect;
+
+// CopyOnWriteArrayList：Kinect 背景執行緒修改時不引發 ConcurrentModificationException
+CopyOnWriteArrayList<NeuronNode> neurons  = new CopyOnWriteArrayList<NeuronNode>();
+ArrayList<Synapse>               synapses = new ArrayList<Synapse>();
+
+StarryUniverse starfield;
+EmotionMapper  emotionMapper;
+
+int     nextID    = 0;
+PVector prevMouse = new PVector();
+
+// ═════════════════════════════════════════════════════════════════════════════
+// settings() 在 setup() 之前執行，是 P2D/P3D 渲染器設定視窗尺寸的正確位置
+void settings() {
+  // ── 展示模式選擇（三擇一，其餘兩行保持註解）──────────────────────────
+  fullScreen(P2D);         // 模式 A：主螢幕全螢幕（電腦螢幕測試 / Win+P 僅第二螢幕時投影）
+  // fullScreen(P2D, 2);  // 模式 B：延伸模式時指定投影機（通常是第 2 台）
+  // fullScreen(P2D, 1);  // 模式 C：延伸模式時指定第 1 台顯示器
+  // size(1280, 720, P2D); // 模式 D：視窗模式（開發測試用）
+
+  pixelDensity(displayDensity());  // 自動偵測密度（電腦螢幕 HiDPI 適用；投影機固定回傳 1）
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+void setup() {
+  colorMode(HSB, 360, 100, 100, 100);
+  background(0, 0, 0);
+  frameRate(60);
+
+  surface.setTitle("Emotional Universe — 情感宇宙");
+
+  emotionMapper = new EmotionMapper();
+  starfield     = new StarryUniverse();
+
+  if (USE_KINECT) {
+    kinect = new Kinect(this);
+  } else {
+    neurons.add(new NeuronNode(nextID++, new PVector(width / 2.0, height / 2.0)));
+    prevMouse.set(width / 2.0, height / 2.0);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+void draw() {
+  // 深空殘影（motion blur）——極暗，讓星星的拖曳軌跡自然消退
+  noStroke();
+  fill(0, 0, 2, 22);
+  rect(0, 0, width, height);
+
+  // ── 更新 ──────────────────────────────────────────────
+  if (!USE_KINECT) updateSimulation();
+
+  starfield.update();
+
+  for (int i = synapses.size() - 1; i >= 0; i--) synapses.get(i).update();
+  for (int i = neurons.size()  - 1; i >= 0; i--) neurons.get(i).update();
+
+  rebuildSynapses();
+  pruneDead();
+
+  // ── 渲染（全程 ADD 混色：深空底下所有元素以加法發光）──
+  blendMode(ADD);
+  starfield.render();              // 閃爍星空宇宙背景
+  for (Synapse s    : synapses) s.render();  // 情感連結
+  for (NeuronNode n : neurons)  n.render();  // 流浪星球
+
+  blendMode(BLEND);
+  drawHUD();
+}
+
+// ── 模擬模式更新 ──────────────────────────────────────────────────────────────
+void updateSimulation() {
+  if (neurons.isEmpty()) return;
+
+  PVector mp  = new PVector(mouseX, mouseY);
+  PVector vel = PVector.sub(mp, prevMouse);
+  neurons.get(0).setPosition(mp, vel);
+  prevMouse.set(mp);
+
+  for (int i = 1; i < neurons.size(); i++) neurons.get(i).wander();
+}
+
+// ── 情感連結管理 ──────────────────────────────────────────────────────────────
+void rebuildSynapses() {
+  for (int i = 0; i < neurons.size(); i++) {
+    for (int j = i + 1; j < neurons.size(); j++) {
+      NeuronNode na = neurons.get(i), nb = neurons.get(j);
+      if (!na.alive || !nb.alive) continue;
+      float d = PVector.dist(na.pos, nb.pos);
+      if (d < MAX_SYN_DIST && !pairHasSynapse(na, nb))
+        synapses.add(new Synapse(na, nb));
+    }
+  }
+}
+
+boolean pairHasSynapse(NeuronNode na, NeuronNode nb) {
+  for (Synapse s : synapses)
+    if ((s.a == na && s.b == nb) || (s.a == nb && s.b == na)) return true;
+  return false;
+}
+
+void pruneDead() {
+  for (int i = synapses.size() - 1; i >= 0; i--) {
+    Synapse s = synapses.get(i);
+    if (!s.a.alive || !s.b.alive || PVector.dist(s.a.pos, s.b.pos) > MAX_SYN_DIST + 60)
+      synapses.remove(i);
+  }
+  for (int i = neurons.size() - 1; i >= 0; i--)
+    if (neurons.get(i).isDead()) neurons.remove(i);
+}
+
+// ── HUD ───────────────────────────────────────────────────────────────────────
+void drawHUD() {
+  textSize(11);
+  textAlign(LEFT, BOTTOM);
+  noStroke();
+  fill(0, 0, 75, 40);
+  text("情感宇宙  Emotional Universe  ·  Inter-Emotional", 20, height - 30);
+  String mode = USE_KINECT ? "Kinect" : "Simulation";
+  text("Mode: " + mode +
+       "   Wandering Planets: " + neurons.size() +
+       "   Emotional Connections: " + synapses.size() +
+       "   [Right-click] Add Planet   [Left-click] Pulse   [C] Reset   [K] Toggle Kinect",
+       20, height - 14);
+}
+
+// ── 鍵盤 / 滑鼠 ───────────────────────────────────────────────────────────────
+void mousePressed() {
+  if (USE_KINECT) return;
+  if (mouseButton == RIGHT) {
+    if (neurons.size() < MAX_NEURONS)
+      neurons.add(new NeuronNode(nextID++, new PVector(mouseX, mouseY)));
+  } else {
+    if (!neurons.isEmpty()) neurons.get(0).pulse(neurons.get(0).eColor);
+  }
+}
+
+void keyPressed() {
+  if (key == 'c' || key == 'C') {
+    neurons.clear();
+    synapses.clear();
+    if (!USE_KINECT) {
+      neurons.add(new NeuronNode(nextID++, new PVector(width / 2.0, height / 2.0)));
+      prevMouse.set(width / 2.0, height / 2.0);
+    }
+  }
+  if (key == 'k' || key == 'K') {
+    USE_KINECT = !USE_KINECT;
+    neurons.clear();
+    synapses.clear();
+    if (USE_KINECT && kinect == null) kinect = new Kinect(this);
+    else if (!USE_KINECT) {
+      neurons.add(new NeuronNode(nextID++, new PVector(width / 2.0, height / 2.0)));
+      prevMouse.set(width / 2.0, height / 2.0);
+    }
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Kinect 骨架回調
+// ═════════════════════════════════════════════════════════════════════════════
+
+void appearEvent(SkeletonData _s) {
+  if (_s.trackingState == Kinect.NUI_SKELETON_NOT_TRACKED) return;
+  synchronized(neurons) {
+    if (neurons.size() >= MAX_NEURONS) return;
+    neurons.add(new NeuronNode(_s.dwTrackingID, kinectCenter(_s)));
+  }
+}
+
+void disappearEvent(SkeletonData _s) {
+  synchronized(neurons) {
+    for (NeuronNode n : neurons)
+      if (n.id == _s.dwTrackingID) { n.alive = false; break; }
+  }
+}
+
+void moveEvent(SkeletonData _before, SkeletonData _after) {
+  if (_after.trackingState == Kinect.NUI_SKELETON_NOT_TRACKED) return;
+  synchronized(neurons) {
+    PVector newPos = kinectCenter(_after);
+    PVector oldPos = kinectCenter(_before);
+    PVector vel    = PVector.sub(newPos, oldPos);
+    for (NeuronNode n : neurons)
+      if (n.id == _after.dwTrackingID) { n.setPosition(newPos, vel); break; }
+  }
+}
+
+PVector kinectCenter(SkeletonData s) {
+  return new PVector(s.position.x * width, s.position.y * height);
+}

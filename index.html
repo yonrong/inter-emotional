@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inter-Emotional 情感交錯 · 畢業創作展</title>
+  <meta name="description" content="Inter-Emotional 情感交錯——探索情感在人與介面之間的流動。六件數位互動作品的畢業創作展，2026.5.5–5.8，臺灣設計口。">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@200;300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ══════════════════════════════════════════════════
+       RESET & ROOT
+    ══════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #07070f;
+      --bg-mid:       #0d0d1c;
+      --text:         #ece7df;
+      --text-dim:     #b4afa6;
+      --text-muted:   #7a756d;
+      --glass:        rgba(255,255,255,0.032);
+      --glass-border: rgba(255,255,255,0.08);
+      --glass-hover:  rgba(255,255,255,0.06);
+      --glass-border-hover: rgba(255,255,255,0.16);
+
+      --c1: #d4946a;   /* ebook – amber         */
+      --c2: #8fbfa4;   /* tang poetry – jade    */
+      --c3: #7aadcf;   /* fluss – night blue    */
+      --c4: #b89fd8;   /* affective – violet    */
+      --c5: #6da2e0;   /* butterfly – cerulean  */
+      --c6: #e08fa0;   /* emotional universe – rose */
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', 'Noto Serif TC', system-ui, sans-serif;
+      font-weight: 300;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ══════════════════════════════════════════════════
+       PARTICLE CANVAS (fixed background)
+    ══════════════════════════════════════════════════ */
+    #hero-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.28;
+    }
+
+    /* ══════════════════════════════════════════════════
+       NAVIGATION
+    ══════════════════════════════════════════════════ */
+    .site-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      padding: 1.4rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.4s, backdrop-filter 0.4s;
+    }
+
+    .site-nav.scrolled {
+      background: rgba(7,7,15,0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.05rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-logo:hover { color: var(--text); }
+
+    .nav-links {
+      display: flex;
+      gap: 2.2rem;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 0.75rem;
+      font-weight: 400;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    /* ══════════════════════════════════════════════════
+       HERO
+    ══════════════════════════════════════════════════ */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8rem 2rem 6rem;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 90% 60% at 50% 45%, rgba(50,30,110,0.22) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 45% at 15% 85%, rgba(15,55,90,0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 55% 50% at 85% 15%, rgba(70,20,55,0.14) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.82rem;
+      font-weight: 400;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 2.2rem;
+      opacity: 0;
+      animation: fadeUp 0.9s ease 0.4s forwards;
+    }
+
+    .hero-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(4.2rem, 11vw, 9.5rem);
+      font-weight: 300;
+      line-height: 0.88;
+      letter-spacing: -0.025em;
+      color: var(--text);
+      margin-bottom: 0.25em;
+      opacity: 0;
+      animation: fadeUp 0.9s ease 0.6s forwards;
+    }
+
+    .hero-title em {
+      font-style: italic;
+      background: linear-gradient(130deg, #c09edc 0%, #7aadcf 45%, #8fbfa4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-title-zh {
+      font-family: 'Noto Serif TC', serif;
+      font-size: clamp(1.4rem, 3.2vw, 2.6rem);
+      font-weight: 200;
+      letter-spacing: 0.55em;
+      color: var(--text-dim);
+      margin-bottom: 2.8rem;
+      opacity: 0;
+      animation: fadeUp 0.9s ease 0.8s forwards;
+    }
+
+    .hero-rule {
+      width: 48px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+      margin: 0 auto 2.6rem;
+      opacity: 0;
+      animation: fadeIn 0.9s ease 1s forwards;
+    }
+
+    .hero-desc {
+      font-family: 'Noto Serif TC', serif;
+      font-size: clamp(0.88rem, 1.4vw, 1rem);
+      font-weight: 300;
+      color: var(--text-muted);
+      max-width: 520px;
+      line-height: 2.1;
+      letter-spacing: 0.06em;
+      margin-bottom: 2.8rem;
+      opacity: 0;
+      animation: fadeUp 0.9s ease 1.2s forwards;
+    }
+
+    .hero-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      justify-content: center;
+      margin-bottom: 0.8rem;
+      opacity: 0;
+      animation: fadeUp 0.9s ease 1.4s forwards;
+    }
+
+    .hero-badge {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 400;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      padding: 0.45em 1.1em;
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 100px;
+      white-space: nowrap;
+    }
+
+    .hero-thesis {
+      font-family: 'Noto Serif TC', serif;
+      font-size: 0.74rem;
+      font-weight: 300;
+      color: rgba(255,255,255,0.28);
+      letter-spacing: 0.08em;
+      margin-top: 0.4rem;
+      opacity: 0;
+      animation: fadeIn 0.9s ease 1.6s forwards;
+    }
+
+    .hero-scroll {
+      position: absolute;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      text-decoration: none;
+      opacity: 0;
+      animation: fadeIn 0.9s ease 2.2s forwards;
+    }
+    .hero-scroll span {
+      font-size: 0.62rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+    }
+    .hero-scroll-line {
+      width: 1px;
+      height: 36px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.3), transparent);
+      animation: scrollDrift 2.2s ease-in-out infinite;
+    }
+
+    /* ══════════════════════════════════════════════════
+       WORKS SECTION
+    ══════════════════════════════════════════════════ */
+    .works-section {
+      position: relative;
+      z-index: 1;
+      padding: 7rem 2rem 9rem;
+      max-width: 1360px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 5rem;
+    }
+    .section-eyebrow {
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1.1rem;
+    }
+    .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem, 4.5vw, 3.8rem);
+      font-weight: 300;
+      color: var(--text);
+      line-height: 1.1;
+    }
+    .section-title-zh {
+      font-family: 'Noto Serif TC', serif;
+      font-size: clamp(0.9rem, 1.8vw, 1.25rem);
+      font-weight: 200;
+      color: var(--text-muted);
+      letter-spacing: 0.35em;
+      margin-top: 0.6rem;
+    }
+
+    /* ── Grid ── */
+    .works-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.4rem;
+    }
+    @media (max-width: 1080px) { .works-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px)  { .works-grid { grid-template-columns: 1fr; } }
+
+    /* ── Card ── */
+    .work-card {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 18px;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(32px);
+      transition:
+        transform  0.45s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 0.3s,
+        background  0.3s;
+    }
+    .work-card.visible {
+      animation: cardReveal 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .work-card:hover {
+      transform: translateY(-7px);
+      background: var(--glass-hover);
+      border-color: var(--glass-border-hover);
+    }
+
+    /* Stagger */
+    .work-card:nth-child(1).visible { animation-delay: 0.00s; }
+    .work-card:nth-child(2).visible { animation-delay: 0.08s; }
+    .work-card:nth-child(3).visible { animation-delay: 0.16s; }
+    .work-card:nth-child(4).visible { animation-delay: 0.24s; }
+    .work-card:nth-child(5).visible { animation-delay: 0.32s; }
+    .work-card:nth-child(6).visible { animation-delay: 0.40s; }
+
+    /* ── Card visual header ── */
+    .card-visual {
+      position: relative;
+      height: 155px;
+      overflow: hidden;
+    }
+    .card-visual::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 45%, rgba(7,7,15,0.65) 100%);
+      z-index: 1;
+    }
+    .card-type {
+      position: absolute;
+      top: 1rem; right: 1rem;
+      font-size: 0.62rem;
+      font-weight: 500;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      padding: 0.28em 0.75em;
+      border-radius: 100px;
+      background: rgba(255,255,255,0.09);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      color: rgba(255,255,255,0.6);
+      z-index: 2;
+    }
+    .card-num {
+      position: absolute;
+      bottom: 0.6rem;
+      left: 1.3rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 4.5rem;
+      font-weight: 300;
+      line-height: 1;
+      color: rgba(255,255,255,0.08);
+      z-index: 2;
+      user-select: none;
+      letter-spacing: -0.04em;
+    }
+
+    /* ── Card body ── */
+    .card-body { padding: 1.6rem 1.7rem 1.5rem; }
+
+    .card-title-zh {
+      font-family: 'Noto Serif TC', serif;
+      font-size: 1.12rem;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 0.18rem;
+      line-height: 1.45;
+    }
+    .card-title-en {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.88rem;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--text-muted);
+      letter-spacing: 0.03em;
+      margin-bottom: 1.15rem;
+    }
+    .card-tagline {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.02rem;
+      font-weight: 400;
+      line-height: 1.65;
+      margin-bottom: 1.1rem;
+      padding-bottom: 1.1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .card-desc {
+      font-family: 'Noto Serif TC', serif;
+      font-size: 0.8rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      line-height: 1.95;
+      letter-spacing: 0.03em;
+      margin-bottom: 1.4rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.38rem;
+      margin-bottom: 1.4rem;
+    }
+    .card-tag {
+      font-size: 0.62rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 0.22em 0.6em;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 4px;
+    }
+    .card-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    .card-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.72rem;
+      font-weight: 400;
+      letter-spacing: 0.07em;
+      text-decoration: none;
+      padding: 0.48em 1em;
+      border-radius: 7px;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-dim);
+      background: rgba(255,255,255,0.035);
+      transition: all 0.22s ease;
+    }
+    .card-link:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.22);
+      color: var(--text);
+    }
+    .card-note {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .card-note::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--c6);
+      flex-shrink: 0;
+    }
+
+    /* ══════════════════════════════════════════════════
+       PER-WORK: Card Visual Backgrounds
+    ══════════════════════════════════════════════════ */
+
+    /* 01 – ebook Emotion Reader · warm amber */
+    .work-1 .card-visual {
+      background:
+        radial-gradient(ellipse 80% 130% at 68% 105%, rgba(190,90,18,0.65) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 80% at 18% 50%,  rgba(110,45,8,0.4)  0%, transparent 70%),
+        linear-gradient(140deg, #150c04 0%, #201208 45%, #321a0c 75%, #3e2010 100%);
+    }
+    .work-1 .card-tagline { color: var(--c1); }
+    .work-1 .card-link.primary {
+      background: rgba(212,148,106,0.09);
+      border-color: rgba(212,148,106,0.28);
+      color: var(--c1);
+    }
+    .work-1 .card-link.primary:hover {
+      background: rgba(212,148,106,0.2);
+      border-color: rgba(212,148,106,0.5);
+      color: #e8ad82;
+    }
+    .work-1:hover { box-shadow: 0 22px 60px rgba(212,148,106,0.09); }
+
+    /* 02 – Tang Poetry · jade ink */
+    .work-2 .card-visual {
+      background:
+        radial-gradient(ellipse 55% 110% at 28% 105%, rgba(28,75,50,0.75) 0%, transparent 58%),
+        radial-gradient(ellipse 70% 55% at 80% 25%,  rgba(12,36,24,0.45) 0%, transparent 70%),
+        linear-gradient(160deg, #04100a 0%, #091c12 48%, #0e2619 100%);
+    }
+    .work-2 .card-tagline { color: var(--c2); }
+    .work-2 .card-link.primary {
+      background: rgba(143,191,164,0.08);
+      border-color: rgba(143,191,164,0.26);
+      color: var(--c2);
+    }
+    .work-2 .card-link.primary:hover {
+      background: rgba(143,191,164,0.17);
+      border-color: rgba(143,191,164,0.45);
+      color: #a8d4ba;
+    }
+    .work-2:hover { box-shadow: 0 22px 60px rgba(143,191,164,0.08); }
+
+    /* 03 – Fluss der Nacht · night river */
+    .work-3 .card-visual {
+      background:
+        radial-gradient(ellipse 42% 65% at 50% 115%, rgba(28,58,105,0.65) 0%, transparent 65%),
+        linear-gradient(180deg, #04060e 0%, #06091a 40%, #0a1228 70%, #0d1a3c 100%);
+    }
+    /* star field */
+    .work-3 .card-visual::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(1.2px 1.2px at 12% 22%, rgba(255,255,255,0.55) 0%, transparent 100%),
+        radial-gradient(1px   1px   at 43% 14%, rgba(255,255,255,0.45) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 74% 32%, rgba(255,255,255,0.6)  0%, transparent 100%),
+        radial-gradient(1px   1px   at 28% 58%, rgba(255,255,255,0.35) 0%, transparent 100%),
+        radial-gradient(1px   1px   at 63% 52%, rgba(255,255,255,0.4)  0%, transparent 100%),
+        radial-gradient(1.2px 1.2px at 86% 68%, rgba(255,255,255,0.5)  0%, transparent 100%),
+        radial-gradient(1px   1px   at 8%  76%, rgba(255,255,255,0.3)  0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 52% 78%, rgba(255,255,255,0.45) 0%, transparent 100%),
+        radial-gradient(1px   1px   at 92% 18%, rgba(255,255,255,0.35) 0%, transparent 100%),
+        radial-gradient(1px   1px   at 38% 88%, rgba(255,255,255,0.3)  0%, transparent 100%);
+    }
+    .work-3 .card-tagline { color: var(--c3); }
+    .work-3 .card-link.primary {
+      background: rgba(122,173,207,0.08);
+      border-color: rgba(122,173,207,0.26);
+      color: var(--c3);
+    }
+    .work-3 .card-link.primary:hover {
+      background: rgba(122,173,207,0.17);
+      border-color: rgba(122,173,207,0.45);
+      color: #96c4de;
+    }
+    .work-3:hover { box-shadow: 0 22px 60px rgba(122,173,207,0.08); }
+
+    /* 04 – Affective Density · cosmic violet */
+    .work-4 .card-visual {
+      background:
+        radial-gradient(ellipse 55% 85% at 50% 55%, rgba(75,28,115,0.55) 0%, transparent 68%),
+        radial-gradient(ellipse 60% 45% at 82% 18%, rgba(38,10,75,0.5)  0%, transparent 70%),
+        radial-gradient(ellipse 65% 55% at 18% 80%, rgba(18,38,78,0.4)  0%, transparent 70%),
+        linear-gradient(135deg, #060209 0%, #0e0618 42%, #120a22 100%);
+    }
+    .work-4 .card-visual::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(2px 2px at 18% 18%, rgba(175,130,218,0.85) 0%, transparent 100%),
+        radial-gradient(1px 1px at 40% 42%, rgba(100,75,178,0.7)   0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 62% 28%, rgba(148,98,200,0.75) 0%, transparent 100%),
+        radial-gradient(1px 1px at 82% 58%, rgba(78,56,158,0.6)    0%, transparent 100%),
+        radial-gradient(2px 2px at 28% 68%, rgba(158,118,208,0.7)  0%, transparent 100%),
+        radial-gradient(1px 1px at 72% 78%, rgba(118,88,188,0.75)  0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 14% 58%, rgba(138,98,198,0.6) 0%, transparent 100%),
+        radial-gradient(1px 1px at 88% 28%, rgba(98,68,168,0.65)   0%, transparent 100%),
+        radial-gradient(1px 1px at 48% 88%, rgba(128,88,188,0.5)   0%, transparent 100%);
+    }
+    .work-4 .card-tagline { color: var(--c4); }
+    .work-4 .card-link.primary {
+      background: rgba(184,159,216,0.08);
+      border-color: rgba(184,159,216,0.26);
+      color: var(--c4);
+    }
+    .work-4 .card-link.primary:hover {
+      background: rgba(184,159,216,0.17);
+      border-color: rgba(184,159,216,0.45);
+      color: #cdb8e8;
+    }
+    .work-4:hover { box-shadow: 0 22px 60px rgba(184,159,216,0.09); }
+
+    /* 05 – Butterfly Effect · cerulean Lorenz */
+    .work-5 .card-visual {
+      background:
+        radial-gradient(ellipse 58% 110% at 28% 108%, rgba(18,48,115,0.72) 0%, transparent 58%),
+        radial-gradient(ellipse 58% 110% at 72% 108%, rgba(18,38,98,0.55)  0%, transparent 58%),
+        radial-gradient(ellipse 38% 38% at 50% 18%,  rgba(38,75,155,0.28) 0%, transparent 70%),
+        linear-gradient(180deg, #04060e 0%, #060a1c 42%, #0a1028 100%);
+    }
+    .work-5 .card-visual::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse 28% 52% at 24% 72%, rgba(55,95,215,0.22) 0%, transparent 70%),
+        radial-gradient(ellipse 28% 52% at 76% 72%, rgba(75,38,175,0.22) 0%, transparent 70%);
+    }
+    .work-5 .card-tagline { color: var(--c5); }
+    .work-5 .card-link.primary {
+      background: rgba(109,162,224,0.08);
+      border-color: rgba(109,162,224,0.26);
+      color: var(--c5);
+    }
+    .work-5 .card-link.primary:hover {
+      background: rgba(109,162,224,0.17);
+      border-color: rgba(109,162,224,0.45);
+      color: #92bfe8;
+    }
+    .work-5:hover { box-shadow: 0 22px 60px rgba(109,162,224,0.09); }
+
+    /* 06 – Emotional Universe · neural rose */
+    .work-6 .card-visual {
+      background:
+        radial-gradient(ellipse 58% 85% at 50% 82%, rgba(115,28,58,0.55) 0%, transparent 68%),
+        radial-gradient(ellipse 38% 42% at 18% 28%, rgba(78,18,38,0.42)  0%, transparent 70%),
+        radial-gradient(ellipse 38% 42% at 82% 28%, rgba(58,8,48,0.38)   0%, transparent 70%),
+        linear-gradient(180deg, #0b0408 0%, #160510 42%, #200818 100%);
+    }
+    .work-6 .card-visual::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(3px 3px at 24% 38%, rgba(218,128,158,0.7)  0%, transparent 100%),
+        radial-gradient(2px 2px at 58% 28%, rgba(178,98,128,0.6)   0%, transparent 100%),
+        radial-gradient(2px 2px at 75% 58%, rgba(198,118,148,0.58) 0%, transparent 100%),
+        radial-gradient(3px 3px at 38% 68%, rgba(208,128,153,0.65) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 82% 18%, rgba(158,88,118,0.5) 0%, transparent 100%),
+        radial-gradient(2px 2px at 14% 62%, rgba(188,108,138,0.55) 0%, transparent 100%),
+        radial-gradient(1px 1px at 68% 82%, rgba(168,98,128,0.45)  0%, transparent 100%);
+    }
+    .work-6 .card-tagline { color: var(--c6); }
+    .work-6 .card-note::before { background: var(--c6); }
+    .work-6:hover { box-shadow: 0 22px 60px rgba(224,143,160,0.09); }
+
+    /* ══════════════════════════════════════════════════
+       THESIS SECTION
+    ══════════════════════════════════════════════════ */
+    .thesis-section {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 5rem 2rem 6rem;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .thesis-eyebrow {
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 2.2rem;
+    }
+    .thesis-rule {
+      width: 40px;
+      height: 1px;
+      background: rgba(255,255,255,0.15);
+      margin: 0 auto 2.2rem;
+    }
+    .thesis-title-zh {
+      font-family: 'Noto Serif TC', serif;
+      font-size: clamp(1rem, 2.2vw, 1.4rem);
+      font-weight: 300;
+      color: var(--text-dim);
+      line-height: 1.9;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.9rem;
+    }
+    .thesis-title-en {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(0.88rem, 1.6vw, 1.1rem);
+      font-style: italic;
+      font-weight: 300;
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 2.5rem;
+    }
+    .thesis-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+    }
+
+    /* ══════════════════════════════════════════════════
+       FOOTER
+    ══════════════════════════════════════════════════ */
+    .site-footer {
+      position: relative;
+      z-index: 1;
+      padding: 2rem 2rem 2.5rem;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.35rem 2rem;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+    }
+    .footer-inner span { opacity: 0.6; }
+
+    /* ══════════════════════════════════════════════════
+       KEYFRAMES
+    ══════════════════════════════════════════════════ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes cardReveal {
+      from { opacity: 0; transform: translateY(32px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scrollDrift {
+      0%, 100% { transform: scaleY(1);   opacity: 0.45; }
+      50%       { transform: scaleY(1.3); opacity: 0.9;  }
+    }
+
+    /* ══════════════════════════════════════════════════
+       RESPONSIVE TWEAKS
+    ══════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      .site-nav { padding: 1.2rem 1.5rem; }
+      .nav-links { display: none; }
+      .works-section { padding: 5rem 1.2rem 7rem; }
+      .card-body { padding: 1.3rem 1.4rem 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Particle canvas ──────────────────────────────── -->
+  <canvas id="hero-canvas" aria-hidden="true"></canvas>
+
+  <!-- ── Navigation ──────────────────────────────────── -->
+  <nav class="site-nav" id="site-nav" aria-label="主選單">
+    <a href="#" class="nav-logo">Inter-Emotional</a>
+    <ul class="nav-links">
+      <li><a href="#works">Works</a></li>
+      <li><a href="#thesis">Thesis</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Hero ────────────────────────────────────────── -->
+  <section class="hero" id="home" aria-label="展覽簡介">
+    <p class="hero-eyebrow">Graduate Exhibition · 畢業創作展 · 2026</p>
+    <h1 class="hero-title">Inter-<em>Emotional</em></h1>
+    <p class="hero-title-zh">情 感 交 錯</p>
+    <div class="hero-rule" aria-hidden="true"></div>
+    <p class="hero-desc">
+      情感不存在於人的內部，也不存在於介面的表面，<br>
+      而是在兩者的接觸地帶持續生成。
+    </p>
+    <div class="hero-info">
+      <span class="hero-badge">2026 · 5.5 — 5.8</span>
+      <span class="hero-badge">10am – 1pm</span>
+      <span class="hero-badge">臺灣設計口 Taiwan Design Corner</span>
+    </div>
+    <p class="hero-thesis">臺北市大安區青田街5巷5號</p>
+    <a class="hero-scroll" href="#works" aria-label="捲動至作品區">
+      <span>Scroll</span>
+      <div class="hero-scroll-line" aria-hidden="true"></div>
+    </a>
+  </section>
+
+  <!-- ── Works ───────────────────────────────────────── -->
+  <section class="works-section" id="works" aria-label="展覽作品">
+    <div class="section-header">
+      <p class="section-eyebrow">Exhibition Works</p>
+      <h2 class="section-title">Six Works</h2>
+      <p class="section-title-zh">六 件 展 覽 作 品</p>
+    </div>
+
+    <div class="works-grid">
+
+      <!-- 01 ── ebook Emotion Reader -->
+      <article class="work-card work-1">
+        <div class="card-visual" aria-hidden="true">
+          <span class="card-type">設計原型</span>
+          <span class="card-num">01</span>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title-zh">情感化電子書介面</h3>
+          <p class="card-title-en">ebook Emotion Reader</p>
+          <p class="card-tagline">
+            讓閱讀電子書時「感受」到文字的情緒——<br>
+            從感知到微互動的情感化介面設計。
+          </p>
+          <p class="card-desc">以《哈利波特：鳳凰會的密令》第三十三章為核心案例，整合 NRC 情緒詞典與 DeepMoji 深度學習模型，透過四層式設計架構重建數位閱讀的情感深度：漸層背景色彩、DeepMoji 情緒面板、互動式 SVG 情緒弧線，以及賦予標記行為生命感的微互動設計。</p>
+          <div class="card-tags">
+            <span class="card-tag">NRC 情緒詞典</span>
+            <span class="card-tag">DeepMoji</span>
+            <span class="card-tag">SVG 情緒弧線</span>
+            <span class="card-tag">微互動</span>
+          </div>
+          <div class="card-links">
+            <a href="https://yonrong.github.io/inter-emotional/ebook-emotion-reader/english.html"
+               target="_blank" rel="noopener noreferrer"
+               class="card-link primary">English Version →</a>
+            <a href="https://yonrong.github.io/inter-emotional/ebook-emotion-reader/chinese.html"
+               target="_blank" rel="noopener noreferrer"
+               class="card-link">中文版 →</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 02 ── Tang Poetry Reader -->
+      <article class="work-card work-2">
+        <div class="card-visual" aria-hidden="true">
+          <span class="card-type">設計原型</span>
+          <span class="card-num">02</span>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title-zh">唐詩微互動介面</h3>
+          <p class="card-title-en">Tang Poetry Micro-Interaction Reader</p>
+          <p class="card-tagline">
+            在唐詩餘韻的微互動中——<br>
+            探尋 14 種閱讀心情的詩意瞬間。
+          </p>
+          <p class="card-desc">以《唐詩三百首》為媒介，結合 StoryGraph 的 14 種閱讀心情，為每種心情設計專屬詩意微互動：〈春曉〉中飄落的桃花瓣、〈楓橋夜泊〉裡鐘聲擴散的環形波紋、〈靜夜思〉中具呼吸感律動的月亮。實踐專為漢詩設計的「餘韻原則」。</p>
+          <div class="card-tags">
+            <span class="card-tag">行動版三區佈局</span>
+            <span class="card-tag">餘韻原則</span>
+            <span class="card-tag">14 種閱讀心情</span>
+            <span class="card-tag">CSS Animation</span>
+          </div>
+          <div class="card-links">
+            <a href="https://yonrong.github.io/inter-emotional/tang-poetry-reader/amber.html"
+               target="_blank" rel="noopener noreferrer"
+               class="card-link primary">琥珀版 Amber →</a>
+            <a href="https://yonrong.github.io/inter-emotional/tang-poetry-reader/blue.html"
+               target="_blank" rel="noopener noreferrer"
+               class="card-link">碧藍版 Blue →</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 03 ── Fluss der Nacht I–IX -->
+      <article class="work-card work-3">
+        <div class="card-visual" aria-hidden="true">
+          <span class="card-type">動態影像</span>
+          <span class="card-num">03</span>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title-zh">夜之流</h3>
+          <p class="card-title-en">Fluss der Nacht I–IX</p>
+          <p class="card-tagline">
+            九幅夜的靜默，在音符中緩緩甦醒——<br>
+            讓影像成為時間的情感渡口。
+          </p>
+          <p class="card-desc">以序列視覺作品《夜之流 I–IX》為素材，配合柯智豪音樂〈River in that Night〉，透過 Ken Burns 推移效果與 xfade 交叉淡變，製作一部 206 秒循環播放的動態影像作品。九幅畫面依音樂結構排列，靜止的影像在時間的流動中重新獲得情感的呼吸。</p>
+          <div class="card-tags">
+            <span class="card-tag">Motion Graphics</span>
+            <span class="card-tag">Ken Burns 效果</span>
+            <span class="card-tag">Music：柯智豪</span>
+            <span class="card-tag">FFmpeg</span>
+          </div>
+          <div class="card-links">
+            <a href="https://youtu.be/7m6FQb4TwnI"
+               target="_blank" rel="noopener noreferrer"
+               class="card-link primary">觀看影片 YouTube →</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 04 ── Affective Density -->
+      <article class="work-card work-4">
+        <div class="card-visual" aria-hidden="true">
+          <span class="card-type">互動數位裝置</span>
+          <span class="card-num">04</span>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title-zh">情感密度——宇宙閃爍的表情</h3>
+          <p class="card-title-en">Affective Density: The Universe's Flickering Expression</p>
+          <p class="card-tagline">
+            在宇宙的閃爍中，<br>
+            我看到了 Pareidolia 的表情。
+          </p>
+          <p class="card-desc">覆蓋全螢幕的微粒子宇宙，五種情感狀態（靜謐、激盪、憂鬱、喜悅、碎裂）驅動數萬光點的色彩、密度與運動。作品運用「幽靈識認」效應，讓臉孔、手掌等形態隱現於粒子場中，探索情感能否以密度與光的語言被直覺感知。</p>
+          <div class="card-tags">
+            <span class="card-tag">WebGL2</span>
+            <span class="card-tag">Fragment Shader</span>
+            <span class="card-tag">Pareidolia 幽靈識認</span>
+            <span class="card-tag">Web Audio API</span>
+          </div>
+          <div class="card-links">
+            <a href="https://yonrong.github.io/inter-emotional/affective_density/index.html"
+               target="_blank" rel="noopener noreferrer"
+               class="card-link primary">進入作品 →</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 05 ── Butterfly Effect -->
+      <article class="work-card work-5">
+        <div class="card-visual" aria-hidden="true">
+          <span class="card-type">互動數位裝置</span>
+          <span class="card-num">05</span>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title-zh">蝴蝶效應</h3>
+          <p class="card-title-en">Butterfly Effect</p>
+          <p class="card-tagline">
+            蝴蝶效應，是微互動最詩意的版本——<br>
+            一次輕觸，六十萬粒子，一個改變了的世界。
+          </p>
+          <p class="card-desc">六十萬個光點在深空中形成兩隻蝴蝶，循著 Lorenz 吸引子軌道飛舞。WebGL2 即時渲染的混沌動力學系統，提供六種情感質地的演化模式——比翼雙飛、漂流、漩渦、脈衝、引力井、轉瞬浮光。每一次觸碰，都將粒子推入無法回頭的軌道。</p>
+          <div class="card-tags">
+            <span class="card-tag">WebGL2 Transform Feedback</span>
+            <span class="card-tag">Lorenz 吸引子</span>
+            <span class="card-tag">60 萬粒子</span>
+            <span class="card-tag">RK4 積分</span>
+          </div>
+          <div class="card-links">
+            <a href="https://yonrong.github.io/inter-emotional/butterfly_effect/index.html"
+               target="_blank" rel="noopener noreferrer"
+               class="card-link primary">進入作品 →</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- 06 ── Emotional Universe -->
+      <article class="work-card work-6">
+        <div class="card-visual" aria-hidden="true">
+          <span class="card-type">現場互動裝置</span>
+          <span class="card-num">06</span>
+        </div>
+        <div class="card-body">
+          <h3 class="card-title-zh">情感宇宙</h3>
+          <p class="card-title-en">Emotional Universe</p>
+          <p class="card-tagline">
+            在情感宇宙中——<br>
+            每個人都是一顆流浪的星球。
+          </p>
+          <p class="card-desc">以 Xbox 360 Kinect 感應參觀者身體動作，即時將每位觀眾轉化為情感神經元。身體的速度與方向映射至五種情感色彩（激動、喜悅、憂鬱、恐懼、中性），突觸連線在人與人之間自動生成，形成隨情感流動而演化的神經網絡視覺裝置。</p>
+          <div class="card-tags">
+            <span class="card-tag">Processing 4.5</span>
+            <span class="card-tag">Kinect v1</span>
+            <span class="card-tag">情感神經元映射</span>
+            <span class="card-tag">Plutchik 情感輪</span>
+          </div>
+          <div class="card-links">
+            <p class="card-note">僅於展覽現場開放體驗 · 2026.5.5–5.8</p>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ── Thesis ───────────────────────────────────────── -->
+  <section class="thesis-section" id="thesis" aria-label="研究論文">
+    <p class="thesis-eyebrow">Research Thesis · 研究論文</p>
+    <div class="thesis-rule" aria-hidden="true"></div>
+    <h3 class="thesis-title-zh">從感知到微互動：<br>數位閱讀平台情感化介面設計研究</h3>
+    <p class="thesis-title-en">
+      From Perception to Micro-Interaction:<br>
+      Affective Interface Design for Digital Reading Platforms
+    </p>
+    <div class="thesis-meta">
+      <span>林雍容</span>
+      <span>國立臺灣師範大學 設計學系</span>
+      <span>指導教授：邱柏嘉 博士</span>
+    </div>
+  </section>
+
+  <!-- ── Footer ───────────────────────────────────────── -->
+  <footer class="site-footer" aria-label="頁尾資訊">
+    <div class="footer-inner">
+      <span>Inter-Emotional 情感交錯</span>
+      <span>·</span>
+      <span>畢業創作展 2026</span>
+      <span>·</span>
+      <span>林雍容</span>
+      <span>·</span>
+      <span>臺灣設計口 Taiwan Design Corner</span>
+    </div>
+  </footer>
+
+  <!-- ── Scripts ──────────────────────────────────────── -->
+  <script>
+    /* ── Particle canvas ─────────────────────────────── */
+    (function () {
+      const canvas = document.getElementById('hero-canvas');
+      const ctx = canvas.getContext('2d');
+      let W, H, pts;
+      const N = 58;
+      const MAX_D = 145;
+
+      function resize() {
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+
+      function makePoint() {
+        return {
+          x:  Math.random() * W,
+          y:  Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.38,
+          vy: (Math.random() - 0.5) * 0.38,
+          r:  Math.random() * 1.3 + 0.5,
+        };
+      }
+
+      function init() {
+        resize();
+        pts = Array.from({ length: N }, makePoint);
+      }
+
+      function step() {
+        ctx.clearRect(0, 0, W, H);
+
+        for (let i = 0; i < N; i++) {
+          const a = pts[i];
+          for (let j = i + 1; j < N; j++) {
+            const b = pts[j];
+            const dx = a.x - b.x, dy = a.y - b.y;
+            const d  = Math.sqrt(dx * dx + dy * dy);
+            if (d < MAX_D) {
+              ctx.beginPath();
+              ctx.strokeStyle = `rgba(168,148,215,${(1 - d / MAX_D) * 0.17})`;
+              ctx.lineWidth = 0.5;
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        for (let i = 0; i < N; i++) {
+          const p = pts[i];
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.5);
+          g.addColorStop(0, 'rgba(195,175,235,0.85)');
+          g.addColorStop(1, 'rgba(195,175,235,0)');
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = g;
+          ctx.fill();
+
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < -12) p.x = W + 12;
+          else if (p.x > W + 12) p.x = -12;
+          if (p.y < -12) p.y = H + 12;
+          else if (p.y > H + 12) p.y = -12;
+        }
+
+        requestAnimationFrame(step);
+      }
+
+      window.addEventListener('resize', () => {
+        resize();
+        pts.forEach(p => {
+          if (p.x > W) p.x = Math.random() * W;
+          if (p.y > H) p.y = Math.random() * H;
+        });
+      });
+
+      init();
+      step();
+    })();
+
+    /* ── Scroll: nav style ──────────────────────────── */
+    const nav = document.getElementById('site-nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 55);
+    }, { passive: true });
+
+    /* ── Scroll: card reveal ─────────────────────────── */
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.08 }
+    );
+    document.querySelectorAll('.work-card').forEach(c => io.observe(c));
+  </script>
+</body>
+</html>

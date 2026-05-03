@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>《情感密度——宇宙閃爍的表情》</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; cursor: none; }
+
+  #ui {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 10;
+  }
+  #ui button {
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.4);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 6px 15px; border-radius: 20px; cursor: pointer;
+    font-size: 10px; font-family: 'Courier New', monospace;
+    letter-spacing: 0.08em; transition: all 0.5s;
+  }
+  #ui button:hover { background: rgba(255,255,255,0.14); color: rgba(255,255,255,0.8); }
+  #ui button.active {
+    background: rgba(255,255,255,0.18);
+    color: #fff; border-color: rgba(255,255,255,0.4);
+  }
+
+  #label {
+    position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,0.18); font-size: 9px; font-family: 'Courier New', monospace;
+    letter-spacing: 0.18em; pointer-events: none; text-transform: uppercase;
+  }
+  #audio-hint {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: rgba(255,255,255,0.35); font-size: 11px; font-family: 'Courier New', monospace;
+    letter-spacing: 0.14em; pointer-events: none; text-align: center;
+    transition: opacity 2s; z-index: 5; line-height: 1.9;
+  }
+  #audio-hint small {
+    display: block; font-size: 9px; opacity: 0.55; letter-spacing: 0.16em;
+  }
+
+  /* ── Black hole vortex cursor ──────────────────────────────────────────── */
+  #cursor {
+    position: fixed; pointer-events: none; z-index: 100;
+    width: 56px; height: 56px;
+    transform: translate(-50%, -50%);
+    opacity: 0; transition: opacity 0.35s;
+  }
+
+  /* ── Status bar — bottom left ───────────────────────────────────────────── */
+  #status-bar {
+    position: fixed; bottom: 28px; left: 24px;
+    display: flex; flex-direction: column; gap: 3px;
+    z-index: 10; pointer-events: none;
+  }
+  #status-bar div {
+    color: rgba(255,255,255,0.30); font-size: 9px;
+    font-family: 'Courier New', monospace; letter-spacing: 0.12em;
+    text-transform: uppercase; transition: color 0.5s;
+  }
+  #sb-emotion { color: rgba(255,255,255,0.52) !important; font-size: 10px !important; }
+  #sb-audio.muted { color: rgba(255,180,80,0.70) !important; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<canvas id="cursor" width="56" height="56"></canvas>
+<div id="label">《情感密度——宇宙閃爍的表情》</div>
+<div id="ui">
+  <button data-e="0" class="active">CALM</button>
+  <button data-e="1">TURBULENT</button>
+  <button data-e="2">MELANCHOLIC</button>
+  <button data-e="3">JOYFUL</button>
+  <button data-e="4">FRAGMENTED</button>
+</div>
+<div id="audio-hint">
+  tap anywhere to enable audio
+  <small>right-click · cycle &nbsp;|&nbsp; m · mute</small>
+</div>
+<div id="status-bar">
+  <div id="sb-emotion">CALM</div>
+  <div id="sb-auto">AUTO · 15s</div>
+  <div id="sb-audio">[M] ·</div>
+</div>
+
+<script>
+'use strict';
+
+// ─── WebGL Setup ──────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'high-performance' });
+if (!gl) { document.body.innerHTML = '<p style="color:#f00;padding:20px">WebGL2 required</p>'; throw 0; }
+
+function resize() {
+  canvas.width  = window.innerWidth  * (window.devicePixelRatio || 1);
+  canvas.height = window.innerHeight * (window.devicePixelRatio || 1);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Vertex Shader ────────────────────────────────────────────────────────────
+const VS = `#version 300 es
+in vec2 a_pos;
+void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
+`;
+
+// ─── Fragment Shader ──────────────────────────────────────────────────────────
+const FS = `#version 300 es
+precision highp float;
+
+uniform float u_time;
+uniform vec2  u_res;
+uniform vec2  u_mouse;
+uniform float u_emotion;
+uniform float u_par_phase;
+uniform float u_par_str;
+uniform float u_interact;
+
+out vec4 fragColor;
+
+// ── Noise ─────────────────────────────────────────────────────────────────────
+float hash(vec2 p) {
+  p = fract(p * vec2(234.34, 435.345));
+  p += dot(p, p + 34.23);
+  return fract(p.x * p.y);
+}
+
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(hash(i), hash(i + vec2(1,0)), f.x),
+    mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
+}
+
+float fbm3(vec2 p) {
+  float v = 0.0;
+  v += 0.5000 * vnoise(p);      p = p * 2.1 + vec2(1.7, 9.2);
+  v += 0.2500 * vnoise(p);      p = p * 2.1 + vec2(8.3, 2.8);
+  v += 0.1250 * vnoise(p);
+  return v / 0.875;
+}
+
+float fbm4(vec2 p) {
+  float v = 0.0;
+  v += 0.5000 * vnoise(p);      p = p * 2.1 + vec2(1.7, 9.2);
+  v += 0.2500 * vnoise(p);      p = p * 2.1 + vec2(8.3, 2.8);
+  v += 0.1250 * vnoise(p);      p = p * 2.1 + vec2(3.1, 5.4);
+  v += 0.0625 * vnoise(p);
+  return v / 0.9375;
+}
+
+// ── Pareidolia SDFs ───────────────────────────────────────────────────────────
+
+float sadFace(vec2 uv, float aspect) {
+  vec2 c = vec2(0.5, 0.51);
+  vec2 p = (uv - c) * vec2(aspect, 1.0);
+  float dens = 0.0;
+
+  float face = length(p * vec2(1.0, 1.18)) - 0.17;
+  dens += smoothstep(0.03, -0.005, face) * 0.55;
+
+  float eL = length((p - vec2(-0.068, 0.055)) * vec2(1.0, 1.5)) - 0.023;
+  dens += smoothstep(0.012, -0.003, eL) * 0.9;
+
+  float eR = length((p - vec2( 0.068, 0.055)) * vec2(1.0, 1.5)) - 0.023;
+  dens += smoothstep(0.012, -0.003, eR) * 0.9;
+
+  vec2 mp = p - vec2(0.0, -0.06);
+  float md = abs(length(mp) - 0.068) - 0.009;
+  if (mp.y > 0.0) md = 100.0;
+  dens += smoothstep(0.012, -0.002, md) * 0.8;
+
+  vec2 tear = p - vec2(-0.068, -0.01);
+  dens += smoothstep(0.01, -0.002, length(tear * vec2(1.0, 0.65)) - 0.01) * 0.55;
+
+  return clamp(dens, 0.0, 1.0);
+}
+
+float joyfulHand(vec2 uv, float aspect) {
+  vec2 c = vec2(0.5, 0.36);
+  vec2 p = (uv - c) * vec2(aspect, 1.0);
+  float dens = 0.0;
+
+  float palm = length(p * vec2(0.85, 1.0)) - 0.105;
+  dens += smoothstep(0.015, -0.003, palm) * 0.7;
+
+  float wrist = length((p - vec2(0.0, -0.115)) * vec2(0.72, 1.0)) - 0.07;
+  dens += smoothstep(0.01, -0.003, wrist) * 0.5;
+
+  float fxs[5]; fxs[0]=-0.088; fxs[1]=-0.044; fxs[2]=0.0; fxs[3]=0.044; fxs[4]=0.086;
+  float fhs[5]; fhs[0]=0.068;  fhs[1]=0.090;  fhs[2]=0.1; fhs[3]=0.088; fhs[4]=0.070;
+
+  for (int i = 0; i < 5; i++) {
+    vec2 fp = p - vec2(fxs[i], 0.115 + fhs[i] * 0.5);
+    float finger = max(abs(fp.x) - 0.017, abs(fp.y) - fhs[i]);
+    float tip = length(fp - vec2(0.0, fhs[i])) - 0.019;
+    finger = min(finger, tip);
+    dens += smoothstep(0.01, -0.003, finger) * 0.78;
+  }
+
+  return clamp(dens, 0.0, 1.0);
+}
+
+float fragmentedEye(vec2 uv, float aspect) {
+  vec2 c = vec2(0.5, 0.5);
+  vec2 p = (uv - c) * vec2(aspect, 1.0);
+  float dens = 0.0;
+
+  float circ1 = length(p - vec2(0.0,  0.095)) - 0.165;
+  float circ2 = length(p - vec2(0.0, -0.095)) - 0.165;
+  float lens  = max(-circ1, -circ2);
+  float lensEdge = abs(lens) - 0.007;
+  dens += smoothstep(0.01, -0.002, lensEdge) * 0.65;
+
+  float iris = abs(length(p) - 0.06) - 0.012;
+  dens += smoothstep(0.008, -0.002, iris) * 0.85;
+
+  float pupil = length(p) - 0.028;
+  dens += smoothstep(0.007, -0.002, pupil) * 0.95;
+
+  float fragNoise = fbm3(p * 18.0 + u_time * 0.25);
+  dens *= 0.55 + 0.45 * fragNoise;
+
+  return clamp(dens, 0.0, 1.0);
+}
+
+// ── Emotion Color Functions ───────────────────────────────────────────────────
+
+vec3 colCalm(vec2 uv, float dc, float t) {
+  vec3 edge = mix(vec3(0.0, 0.78, 0.18), vec3(0.0, 0.60, 0.65), dc);
+  vec3 core = mix(vec3(0.08, 0.22, 0.92), vec3(0.48, 0.06, 0.84), fbm3(uv * 4.0 + t * 0.08));
+  core = mix(core, vec3(0.75, 0.28, 0.0), smoothstep(0.06, 0.0, dc) * 0.18);
+  return mix(core, edge, smoothstep(0.12, 0.42, dc));
+}
+
+vec3 colTurbulent(vec2 uv, float dc, float t) {
+  float n1 = fbm4(uv * 7.0 + t * 0.45);
+  float n2 = fbm3(uv * 12.0 - t * 0.28);
+  vec3  c  = mix(vec3(1.0, 0.38, 0.0), vec3(0.88, 0.04, 0.0), n1);
+  c = mix(c, vec3(1.0, 0.88, 0.0), n2 * 0.38);
+  c = mix(c, vec3(1.0, 0.96, 0.85), smoothstep(0.08, 0.0, dc) * 0.55);
+  return c;
+}
+
+vec3 colMelancholic(vec2 uv, float dc, float t) {
+  float n = fbm4(uv * 4.5 + t * 0.07);
+  vec3 deep  = vec3(0.22, 0.05, 0.42);
+  vec3 grey  = vec3(0.11, 0.11, 0.16);
+  vec3 coldB = vec3(0.05, 0.10, 0.32);
+  vec3 c = mix(deep, grey, n);
+  c = mix(c, coldB, smoothstep(0.3, 0.0, dc) * 0.6);
+  c += vec3(0.0, 0.04, 0.12) * fbm3(uv * 16.0 + t * 0.18);
+  return c;
+}
+
+vec3 colJoyful(vec2 uv, float dc, float t) {
+  float n1 = fbm4(uv * 8.0 + t * 0.55);
+  float n2 = fbm3(uv * 5.5 - t * 0.28);
+  vec3 gold   = vec3(1.0, 0.82, 0.0);
+  vec3 orange = vec3(1.0, 0.52, 0.05);
+  vec3 bright = vec3(1.0, 1.0, 0.62);
+  vec3 c = mix(gold, orange, n1);
+  c = mix(c, bright, n2 * 0.32);
+  float glow = smoothstep(0.38, 0.0, length(uv - vec2(0.5, 0.33)));
+  c = mix(c, vec3(1.0, 1.0, 0.9), glow * 0.48);
+  return c;
+}
+
+vec3 colFragmented(vec2 uv, float dc, float t) {
+  float n1 = fbm4(uv * 17.0 + t * 1.4);
+  float n2 = fbm3(uv * 11.0 - t * 0.75);
+  float n3 = fbm3(uv * 22.0 + t * 2.1);
+  vec3 toxic   = vec3(0.08, 0.88, 0.08);
+  vec3 crimson = vec3(0.72, 0.02, 0.08);
+  vec3 void_   = vec3(0.06, 0.06, 0.09);
+  vec3 bio     = vec3(0.0, 0.38, 0.98);
+  vec3 c = mix(toxic, crimson, n1);
+  c = mix(c, void_, n2 * 0.45);
+  c = mix(c, bio,   n3 * 0.28);
+  float band = step(0.965, fract(uv.y * 38.0 + t * 3.2));
+  c = mix(c, vec3(1.0), band * 0.45);
+  return c;
+}
+
+vec3 blendEmotion(vec2 uv, float dc, float t, float emotion) {
+  float e = clamp(emotion, 0.0, 4.0);
+  float ef = fract(e);
+  int   ei = int(floor(e));
+
+  vec3 a, b;
+  if      (ei == 0) { a = colCalm(uv, dc, t);        b = colTurbulent(uv, dc, t); }
+  else if (ei == 1) { a = colTurbulent(uv, dc, t);   b = colMelancholic(uv, dc, t); }
+  else if (ei == 2) { a = colMelancholic(uv, dc, t); b = colJoyful(uv, dc, t); }
+  else if (ei == 3) { a = colJoyful(uv, dc, t);      b = colFragmented(uv, dc, t); }
+  else              { a = colFragmented(uv, dc, t);   b = a; }
+
+  return mix(a, b, ef);
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+void main() {
+  vec2  fc     = gl_FragCoord.xy;
+  vec2  uv     = fc / u_res;
+  float t      = u_time;
+  float aspect = u_res.x / u_res.y;
+
+  // ─ Grid cell ────────────────────────────────────────────────────────────────
+  const float G = 5.0;
+  vec2  cell  = floor(fc / G);
+  vec2  cCtr  = (cell + 0.5) * G;
+  vec2  cUV   = cCtr / u_res;
+
+  // ─ Micro-drift ──────────────────────────────────────────────────────────────
+  float ph  = hash(cell);
+  float spd = 0.12 + ph * 0.09;
+
+  float e = u_emotion;
+  float driftScale;
+  if      (e < 1.0) driftScale = mix(0.28, 0.95, e);
+  else if (e < 2.0) driftScale = mix(0.95, 0.18, e - 1.0);
+  else if (e < 3.0) driftScale = mix(0.18, 0.72, e - 2.0);
+  else              driftScale = mix(0.72, 1.0,   e - 3.0);
+
+  float driftAmt = G * 0.32 * driftScale;
+
+  vec2  seed = cell * vec2(0.073, 0.091);
+  float dx   = fbm3(seed + vec2(0.0, 43.1) + t * spd) - 0.5;
+  float dy   = fbm3(seed + vec2(73.3, 0.0) + t * spd) - 0.5;
+  vec2  drift = normalize(vec2(dx, dy) + vec2(0.001)) * driftAmt;
+
+  if (u_emotion > 0.5 && u_emotion < 1.5) {
+    float sw = (u_emotion < 1.0) ? u_emotion - 0.5 : 1.5 - u_emotion;
+    sw = sw * 2.0;
+    vec2 swirl = vec2(-dy, dx) * sw * 0.4;
+    drift += swirl;
+  }
+
+  // ─ Black hole cursor: radial repulsion + orbital swirl ──────────────────────
+  vec2  mPx   = u_mouse * u_res;
+  vec2  mDir  = fc - mPx;
+  float mDist = length(mDir);
+  vec2  mNorm = normalize(mDir + vec2(0.001));
+
+  // Strong radial push — event horizon ejection (was 90px/18.0, now 160px/55.0)
+  float mPush = smoothstep(45.0, 6.0, mDist) * u_interact;
+  drift += mNorm * mPush * 55.0;
+
+  // Clockwise orbital swirl — accretion disk rotation around singularity
+  vec2  mTan   = vec2(mNorm.y, -mNorm.x);
+  float swirlR = smoothstep(45.0, 9.0, mDist) * smoothstep(4.0, 20.0, mDist) * u_interact;
+  drift += mTan * swirlR * 20.0;
+
+  vec2 pPos = cCtr + drift;
+
+  // ─ Particle radius with shimmer ──────────────────────────────────────────────
+  float baseR   = G * 0.4;
+  float shimmer = 0.86 + 0.14 * sin(t * (2.5 + ph * 4.5) + ph * 6.28);
+  float tPulse  = (u_emotion > 0.4 && u_emotion < 1.6)
+    ? 1.0 + 0.28 * sin(t * 9.0 + ph * 6.28) * smoothstep(0.4, 1.0, min(u_emotion, 2.0 - u_emotion))
+    : 1.0;
+  float radius = baseR * shimmer * tPulse;
+
+  float dist = length(fc - pPos);
+  if (dist > radius) { fragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+
+  // ─ Base color ────────────────────────────────────────────────────────────────
+  float dc  = length(cUV - 0.5) * 1.414;
+  vec3  col = blendEmotion(cUV, dc, t, u_emotion);
+
+  // ─ Pareidolia overlay ────────────────────────────────────────────────────────
+  float sdFace = sadFace(cUV, aspect);
+  float sdHand = joyfulHand(cUV, aspect);
+  float sdEye  = fragmentedEye(cUV, aspect);
+
+  float pp = u_par_phase;
+  float ps = u_par_str;
+
+  float parDens;
+  vec3  parCol;
+
+  vec3 sadC  = vec3(0.45, 0.08, 0.72);
+  vec3 handC = vec3(1.0,  0.80, 0.02);
+  vec3 eyeC  = vec3(0.0,  0.65, 0.50);
+
+  if (pp < 1.0) {
+    parDens = mix(sdFace, sdHand, pp);
+    parCol  = mix(sadC, handC, pp);
+  } else if (pp < 2.0) {
+    parDens = mix(sdHand, sdEye, pp - 1.0);
+    parCol  = mix(handC, eyeC, pp - 1.0);
+  } else {
+    parDens = mix(sdEye, sdFace, pp - 2.0);
+    parCol  = mix(eyeC, sadC, pp - 2.0);
+  }
+
+  col = mix(col, parCol, parDens * ps * 0.72);
+
+  // ─ Glow & falloff ────────────────────────────────────────────────────────────
+  float glow = pow(1.0 - smoothstep(0.0, radius, dist), 1.8);
+  glow *= 1.0 + parDens * ps * 0.45;
+
+  float core = smoothstep(radius * 0.45, 0.0, dist);
+  col = col * glow + col * core * 0.38;
+
+  // ─ Bioluminescent shimmer ────────────────────────────────────────────────────
+  float bio = 0.82 + 0.18 * sin(t * (2.2 + ph * 4.8) + hash(cell + 1.0) * 6.28);
+  col *= bio;
+
+  // ─ Random glints ─────────────────────────────────────────────────────────────
+  float glintHash = hash(cell + floor(t * 1.5) * vec2(0.13, 0.21));
+  if (glintHash > 0.987) {
+    float age = fract(t * 1.5);
+    float gf  = sin(age * 3.14159);
+    col += vec3(0.7, 0.75, 1.0) * gf * 0.9;
+  }
+
+  // ─ Black hole event horizon overlay ──────────────────────────────────────────
+  if (u_interact > 0.5) {
+    // Absorption shadow — darkens the particle-void inside the ejection zone
+    float consumed = smoothstep(28.0, 5.0, mDist);
+    col *= (1.0 - consumed * 0.88);
+
+    // Accretion ring at actual pile-up boundary (~52 px, where ejected particles accumulate)
+    float ringD = abs(mDist - 52.0);
+    float ring  = smoothstep(14.0, 0.0, ringD) * smoothstep(32.0, 48.0, mDist);
+    col += vec3(0.58, 0.78, 1.0) * ring * 1.60;
+  }
+
+  fragColor = vec4(col, 1.0);
+}
+`;
+
+// ─── Compile & Link ───────────────────────────────────────────────────────────
+function shader(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(s));
+    throw new Error('Shader error');
+  }
+  return s;
+}
+
+function program(vsSrc, fsSrc) {
+  const p = gl.createProgram();
+  gl.attachShader(p, shader(gl.VERTEX_SHADER,   vsSrc));
+  gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fsSrc));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(p));
+    throw new Error('Link error');
+  }
+  return p;
+}
+
+const prog = program(VS, FS);
+gl.useProgram(prog);
+
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+const aPos = gl.getAttribLocation(prog, 'a_pos');
+gl.enableVertexAttribArray(aPos);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+const U = {};
+['u_time','u_res','u_mouse','u_emotion','u_par_phase','u_par_str','u_interact'].forEach(
+  n => U[n] = gl.getUniformLocation(prog, n)
+);
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let targetEmotion  = 0;
+let currentEmotion = 0;
+let mouse          = [0.5, 0.5];
+let mouseActive    = false;
+let parPhase       = 0;
+let parStr         = 0;
+let parTimer       = 0;
+let isMuted        = false;
+let lastInteractionTime = Date.now();
+const IDLE_DELAY   = 15000;
+const EMOTION_NAMES = ['CALM', 'TURBULENT', 'MELANCHOLIC', 'JOYFUL', 'FRAGMENTED'];
+let vortexAngle      = 0;
+let lastMouseMoveTime = Date.now();
+let autoMoveActive   = false;
+let autoPos          = [0.5, 0.5];
+let autoTarget       = [0.5, 0.5];
+let autoTargetTimer  = 0;
+const MOUSE_IDLE     = 15000;
+
+// ─── UI references ────────────────────────────────────────────────────────────
+const cursorEl  = document.getElementById('cursor');
+const cursorCtx = cursorEl.getContext('2d');
+const sbEmotion = document.getElementById('sb-emotion');
+const sbAuto    = document.getElementById('sb-auto');
+const sbAudio   = document.getElementById('sb-audio');
+const btns      = document.querySelectorAll('#ui button');
+
+// ─── Vortex cursor drawing ────────────────────────────────────────────────────
+function drawVortexCursor(dt) {
+  vortexAngle += dt * 1.8; // ~3.5 s per full rotation
+  const c = cursorCtx;
+  const W = 56, CX = 28, CY = 28, CR = 24;
+  c.clearRect(0, 0, W, W);
+
+  // Outer ambient haze
+  const haze = c.createRadialGradient(CX, CY, CR * 0.45, CX, CY, CR);
+  haze.addColorStop(0,   'rgba(70,110,255,0)');
+  haze.addColorStop(0.5, 'rgba(80,125,255,0.16)');
+  haze.addColorStop(1,   'rgba(60,100,255,0)');
+  c.fillStyle = haze;
+  c.beginPath(); c.arc(CX, CY, CR, 0, Math.PI * 2); c.fill();
+
+  // Spiral arms: 3 arms, each 1.5 turns, bright outer → dark inner
+  const armGrad = c.createRadialGradient(CX, CY, 0, CX, CY, CR);
+  armGrad.addColorStop(0,    'rgba(0,0,0,0)');
+  armGrad.addColorStop(0.22, 'rgba(45,75,195,0.12)');
+  armGrad.addColorStop(0.52, 'rgba(88,138,255,0.70)');
+  armGrad.addColorStop(0.78, 'rgba(148,190,255,0.95)');
+  armGrad.addColorStop(1.0,  'rgba(210,228,255,0.50)');
+
+  const TURNS = 1.5 * Math.PI * 2;
+  for (let arm = 0; arm < 3; arm++) {
+    const off = vortexAngle + (arm / 3) * Math.PI * 2;
+    c.beginPath();
+    for (let i = 0; i <= 120; i++) {
+      const f = i / 120;
+      const x = CX + f * CR * 0.95 * Math.cos(off + f * TURNS);
+      const y = CY + f * CR * 0.95 * Math.sin(off + f * TURNS);
+      i === 0 ? c.moveTo(x, y) : c.lineTo(x, y);
+    }
+    c.strokeStyle = armGrad;
+    c.lineWidth   = 2.0;
+    c.lineCap     = 'round';
+    c.stroke();
+  }
+
+  // Singularity — deep black center fading outward
+  const black = c.createRadialGradient(CX, CY, 0, CX, CY, CR * 0.54);
+  black.addColorStop(0,    'rgba(0,0,0,1)');
+  black.addColorStop(0.60, 'rgba(0,0,0,0.88)');
+  black.addColorStop(1,    'rgba(0,0,0,0)');
+  c.fillStyle = black;
+  c.beginPath(); c.arc(CX, CY, CR * 0.54, 0, Math.PI * 2); c.fill();
+}
+
+// ─── Auto cursor drift (15 s mouse idle → black hole roams the screen) ───────
+function updateAutoCursor(dt) {
+  if (Date.now() - lastMouseMoveTime < MOUSE_IDLE) {
+    autoMoveActive = false;
+    return;
+  }
+  autoMoveActive = true;
+
+  autoTargetTimer -= dt;
+  if (autoTargetTimer <= 0) {
+    autoTarget[0] = 0.12 + Math.random() * 0.76;
+    autoTarget[1] = 0.12 + Math.random() * 0.76;
+    autoTargetTimer = 2.5 + Math.random() * 3.5;
+  }
+
+  // Smooth slow drift toward target (~4-5 s to close the gap)
+  autoPos[0] += (autoTarget[0] - autoPos[0]) * dt * 0.55;
+  autoPos[1] += (autoTarget[1] - autoPos[1]) * dt * 0.55;
+
+  mouse[0] = autoPos[0];
+  mouse[1] = autoPos[1];
+  mouseActive = true;
+
+  cursorEl.style.left    = (autoPos[0] * window.innerWidth) + 'px';
+  cursorEl.style.top     = ((1.0 - autoPos[1]) * window.innerHeight) + 'px';
+  cursorEl.style.opacity = '1';
+}
+
+// ─── Status bar ───────────────────────────────────────────────────────────────
+function updateStatusBar() {
+  sbEmotion.textContent = EMOTION_NAMES[targetEmotion];
+  if (isMuted) {
+    sbAudio.textContent = '[M] MUTED';
+    sbAudio.classList.add('muted');
+  } else {
+    sbAudio.textContent = '[M] ·';
+    sbAudio.classList.remove('muted');
+  }
+}
+
+// ─── Centralized emotion switch ───────────────────────────────────────────────
+function setEmotion(e) {
+  targetEmotion = e;
+  lastInteractionTime = Date.now();
+  btns.forEach(b => b.classList.toggle('active', +b.dataset.e === e));
+  if (A) switchAudioState(e);
+  updateStatusBar();
+}
+
+// ─── UI buttons (left-click) ──────────────────────────────────────────────────
+btns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    initAudio();
+    setEmotion(+btn.dataset.e);
+  });
+});
+
+// ─── Right-click → next emotion ───────────────────────────────────────────────
+document.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  initAudio();
+  setEmotion((targetEmotion + 1) % 5);
+});
+
+// ─── M key — mute toggle ──────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'm' || e.key === 'M') {
+    isMuted = !isMuted;
+    if (A) A.master.gain.setTargetAtTime(isMuted ? 0 : 0.15, A.ctx.currentTime, 0.15);
+    updateStatusBar();
+  }
+});
+
+// ─── Mouse / Touch ────────────────────────────────────────────────────────────
+canvas.addEventListener('mousemove', e => {
+  mouse[0] = e.clientX / window.innerWidth;
+  mouse[1] = 1.0 - e.clientY / window.innerHeight;
+  mouseActive = true;
+  lastMouseMoveTime = Date.now();
+  autoPos[0] = mouse[0]; // keep auto-pos in sync so drift resumes smoothly
+  autoPos[1] = mouse[1];
+  cursorEl.style.left    = e.clientX + 'px';
+  cursorEl.style.top     = e.clientY + 'px';
+  cursorEl.style.opacity = '1';
+});
+canvas.addEventListener('mouseleave', () => {
+  mouseActive = false;
+  cursorEl.style.opacity = '0';
+});
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  mouse[0] = t.clientX / window.innerWidth;
+  mouse[1] = 1.0 - t.clientY / window.innerHeight;
+  mouseActive = true;
+}, { passive: false });
+canvas.addEventListener('touchend', () => { mouseActive = false; });
+
+// ─── Idle auto-change (every 500 ms, fires at 15 s inactivity) ───────────────
+setInterval(() => {
+  const elapsed   = Date.now() - lastInteractionTime;
+  const remaining = Math.max(0, Math.ceil((IDLE_DELAY - elapsed) / 1000));
+  sbAuto.textContent = 'AUTO · ' + remaining + 's';
+
+  if (elapsed >= IDLE_DELAY) {
+    let next;
+    do { next = Math.floor(Math.random() * 5); } while (next === targetEmotion);
+    setEmotion(next);
+  }
+}, 500);
+
+// ─── Audio Engine — Interstellar / Hans Zimmer Style ─────────────────────────
+const hint = document.getElementById('audio-hint');
+let A = null;
+
+const ORGAN_H = [
+  { m: 1, g: 1.00 },
+  { m: 2, g: 0.62 },
+  { m: 3, g: 0.38 },
+  { m: 4, g: 0.26 },
+  { m: 6, g: 0.14 },
+  { m: 8, g: 0.09 },
+];
+
+function organNote(ctx, freq, dest, vol = 1.0) {
+  const master = ctx.createGain();
+  master.gain.value = vol;
+  master.connect(dest);
+  ORGAN_H.forEach(({ m, g }) => {
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = freq * m;
+    const gn = ctx.createGain();
+    gn.gain.value = g;
+    o.connect(gn);
+    gn.connect(master);
+    o.start();
+  });
+  return master;
+}
+
+function organBurst(ctx, freq, dest, vol, attackS, decayS, harmonics = 4) {
+  const t = ctx.currentTime;
+  ORGAN_H.slice(0, harmonics).forEach(({ m, g }) => {
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = freq * m;
+    const gn = ctx.createGain();
+    gn.gain.setValueAtTime(0, t);
+    gn.gain.linearRampToValueAtTime(g * vol, t + attackS);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + attackS + decayS);
+    o.connect(gn);
+    gn.connect(dest);
+    o.start(t);
+    o.stop(t + attackS + decayS + 0.05);
+  });
+}
+
+function makeReverb(ctx, durationS = 5.0, decay = 2.6) {
+  const len = Math.floor(ctx.sampleRate * durationS);
+  const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++)
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+  }
+  const conv = ctx.createConvolver();
+  conv.buffer = buf;
+  return conv;
+}
+
+function makeMelodySeq(ctx, notes, dest, vol = 0.12, overlapS = 0.9) {
+  let idx = 0;
+  let nextTime = ctx.currentTime + 0.8;
+  let alive = true;
+
+  function schedule() {
+    if (!alive) return;
+    const LOOKAHEAD = 0.6;
+    while (nextTime < ctx.currentTime + LOOKAHEAD) {
+      const note = notes[idx % notes.length]; idx++;
+      const t   = nextTime;
+      const dur = note.dur;
+      const fi  = Math.min(0.9, dur * 0.13);
+      const fo  = Math.min(1.1, dur * 0.20);
+      ORGAN_H.forEach(({ m, g }) => {
+        const o  = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = note.freq * m;
+        const gn = ctx.createGain();
+        gn.gain.setValueAtTime(0, t);
+        gn.gain.linearRampToValueAtTime(g * vol, t + fi);
+        gn.gain.setValueAtTime(g * vol, t + dur - fo);
+        gn.gain.linearRampToValueAtTime(0, t + dur + fo * 0.4);
+        o.connect(gn); gn.connect(dest);
+        o.start(t);
+        o.stop(t + dur + fo + 0.1);
+      });
+      nextTime += dur - overlapS;
+    }
+    setTimeout(schedule, 80);
+  }
+  schedule();
+  return { stop() { alive = false; } };
+}
+
+function buildCalm(ctx, dest) {
+  organNote(ctx, 73.42,  dest, 0.36);
+  organNote(ctx, 110.00, dest, 0.24);
+  organNote(ctx, 146.83, dest, 0.16);
+  organNote(ctx, 220.00, dest, 0.09);
+  const melody = [
+    { freq: 293.66, dur: 9  },
+    { freq: 261.63, dur: 8  },
+    { freq: 233.08, dur: 8  },
+    { freq: 220.00, dur: 9  },
+    { freq: 196.00, dur: 11 },
+  ];
+  return makeMelodySeq(ctx, melody, dest, 0.10, 1.2);
+}
+
+function buildTurbulent(ctx, dest) {
+  [65.41, 77.78, 98.00, 130.81, 155.56, 196.00].forEach(f =>
+    organNote(ctx, f, dest, 0.14)
+  );
+  const shepOscs = [27.5, 55.0, 110.0, 220.0, 440.0, 880.0].map(freq => {
+    const o  = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    const gn = ctx.createGain();
+    gn.gain.value = 0;
+    o.connect(gn);
+    gn.connect(dest);
+    o.start();
+    return { osc: o, gn, freq };
+  });
+  return { shepOscs };
+}
+
+function buildMelancholic(ctx, dest) {
+  [
+    { f: 55.00,  v: 0.40 },
+    { f: 82.41,  v: 0.26 },
+    { f: 110.00, v: 0.30 },
+    { f: 130.81, v: 0.16 },
+    { f: 164.81, v: 0.10 },
+  ].forEach(({ f, v }) => organNote(ctx, f, dest, v));
+
+  let hbOn = true;
+  function beat() {
+    if (!hbOn) return;
+    organBurst(ctx, 55.00, dest, 0.22, 0.012, 0.14, 3);
+    setTimeout(() => {
+      if (hbOn) organBurst(ctx, 55.00, dest, 0.13, 0.010, 0.09, 2);
+    }, 240);
+    setTimeout(beat, 1400);
+  }
+  beat();
+
+  const melody = [
+    { freq: 220.00, dur: 7  },
+    { freq: 196.00, dur: 6  },
+    { freq: 174.61, dur: 6  },
+    { freq: 164.81, dur: 10 },
+    { freq: 174.61, dur: 5  },
+    { freq: 196.00, dur: 6  },
+  ];
+  const seq = makeMelodySeq(ctx, melody, dest, 0.09, 1.4);
+  return { stop() { hbOn = false; seq.stop(); } };
+}
+
+function buildJoyful(ctx, dest) {
+  organNote(ctx, 73.42,  dest, 0.28);
+  organNote(ctx, 110.00, dest, 0.18);
+  const S = 0.27;
+  const arp = [
+    { freq: 293.66, dur: S * 1.5 },
+    { freq: 329.63, dur: S       },
+    { freq: 440.00, dur: S       },
+    { freq: 493.88, dur: S * 2.5 },
+    { freq: 440.00, dur: S       },
+    { freq: 370.00, dur: S       },
+    { freq: 329.63, dur: S       },
+    { freq: 293.66, dur: S * 2   },
+    { freq: 246.94, dur: S       },
+    { freq: 293.66, dur: S       },
+    { freq: 370.00, dur: S       },
+    { freq: 440.00, dur: S * 3   },
+  ];
+  return makeMelodySeq(ctx, arp, dest, 0.13, 0.08);
+}
+
+function buildFragmented(ctx, dest) {
+  [
+    { f: 65.41,  v: 0.26 },
+    { f: 98.00,  v: 0.20 },
+    { f: 130.81, v: 0.16 },
+    { f: 164.81, v: 0.10 },
+  ].forEach(({ f, v }) => organNote(ctx, f, dest, v));
+
+  const INTERVAL = 1.246;
+  let tickOn = true;
+
+  function tick() {
+    if (!tickOn) return;
+    const t = ctx.currentTime;
+    [880, 1320].forEach((freq, i) => {
+      const o   = ctx.createOscillator();
+      o.type = 'square';
+      o.frequency.value = freq;
+      const bpf = ctx.createBiquadFilter();
+      bpf.type = 'bandpass';
+      bpf.frequency.value = freq;
+      bpf.Q.value = 4;
+      const gn  = ctx.createGain();
+      const tOff = t + i * 0.018;
+      gn.gain.setValueAtTime(0, tOff);
+      gn.gain.linearRampToValueAtTime(0.20 - i * 0.07, tOff + 0.002);
+      gn.gain.exponentialRampToValueAtTime(0.0001, tOff + 0.065);
+      o.connect(bpf); bpf.connect(gn); gn.connect(dest);
+      o.start(tOff); o.stop(tOff + 0.1);
+    });
+    setTimeout(tick, INTERVAL * 1000);
+  }
+  tick();
+
+  return { stop() { tickOn = false; } };
+}
+
+// ── Init & routing ─────────────────────────────────────────────────────────────
+function initAudio() {
+  if (A) return;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume();
+
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0, ctx.currentTime);
+  if (!isMuted) {
+    master.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 2.5);
+  }
+  master.connect(ctx.destination);
+
+  const reverb  = makeReverb(ctx, 3.5, 2.4);
+  const revSend = ctx.createGain();
+  revSend.gain.value = 0.42;
+  reverb.connect(revSend);
+  revSend.connect(master);
+
+  const buses = Array.from({ length: 5 }, (_, i) => {
+    const dry = ctx.createGain(); dry.gain.value = i === 0 ? 1 : 0;
+    const wet = ctx.createGain(); wet.gain.value = i === 0 ? 1 : 0;
+    dry.connect(master);
+    wet.connect(reverb);
+    return { dry, wet };
+  });
+
+  function stateOut(i) {
+    const m = ctx.createGain(); m.gain.value = 1;
+    m.connect(buses[i].dry);
+    m.connect(buses[i].wet);
+    return m;
+  }
+
+  const turbData = buildTurbulent(ctx, stateOut(1));
+
+  A = {
+    ctx, master, buses,
+    shep: turbData.shepOscs,
+    activeState: 0,
+  };
+
+  buildCalm(ctx,        stateOut(0));
+  buildMelancholic(ctx, stateOut(2));
+  buildJoyful(ctx,      stateOut(3));
+  buildFragmented(ctx,  stateOut(4));
+
+  // Switch to whichever emotion was active when audio initialised
+  if (targetEmotion !== 0) switchAudioState(targetEmotion);
+
+  hint.style.opacity = '0';
+  setTimeout(() => hint.remove?.(), 2000);
+}
+
+function switchAudioState(state) {
+  if (!A) return;
+  const t    = A.ctx.currentTime;
+  const FADE = 1.2;
+  A.buses.forEach((bus, i) => {
+    const v = i === state ? 1 : 0;
+    bus.dry.gain.setTargetAtTime(v, t, FADE / 4);
+    bus.wet.gain.setTargetAtTime(v, t, FADE / 4);
+  });
+  A.activeState = state;
+}
+
+function updateShepherd(dt) {
+  if (!A || !A.shep) return;
+  const CENTER_LOG2 = Math.log2(110);
+  const RISE = Math.pow(2, dt / 18);
+
+  A.shep.forEach(s => {
+    s.freq *= RISE;
+    if (s.freq > 880) s.freq /= 2;
+    s.osc.frequency.setValueAtTime(s.freq, A.ctx.currentTime);
+
+    const logD = Math.abs(Math.log2(s.freq) - CENTER_LOG2);
+    const bell = Math.exp(-logD * logD * 0.65) * 0.38;
+    s.gn.gain.setTargetAtTime(bell, A.ctx.currentTime, 0.08);
+  });
+}
+
+document.addEventListener('click',      initAudio, { once: true });
+document.addEventListener('touchstart', initAudio, { once: true });
+document.addEventListener('touchend',   initAudio, { once: true });
+
+// ─── Pareidolia Timing ────────────────────────────────────────────────────────
+function updatePareidolia(dt) {
+  parTimer += dt;
+  const C  = 30.0;
+  const ph = (parTimer % C) / C;
+
+  const t0 = 0.000, t1 = 0.067, t2 = 0.233, t3 = 0.300,
+        t4 = 0.467, t5 = 0.533, t6 = 0.700, t7 = 0.767;
+
+  let str = 0.0, phase = 0.0;
+
+  if (ph < t1) {
+    str   = (ph - t0) / (t1 - t0);
+    phase = 0.0;
+  } else if (ph < t2) {
+    str   = 1.0;
+    phase = 0.0;
+  } else if (ph < t3) {
+    str   = 1.0;
+    phase = (ph - t2) / (t3 - t2);
+  } else if (ph < t4) {
+    str   = 1.0;
+    phase = 1.0;
+  } else if (ph < t5) {
+    str   = 1.0;
+    phase = 1.0 + (ph - t4) / (t5 - t4);
+  } else if (ph < t6) {
+    str   = 1.0;
+    phase = 2.0;
+  } else if (ph < t7) {
+    str   = 1.0 - (ph - t6) / (t7 - t6);
+    phase = 2.0;
+  } else {
+    str   = 0.0;
+    phase = 0.0;
+  }
+
+  parPhase = phase;
+  parStr   = str * 0.52;
+}
+
+// ─── Render Loop ──────────────────────────────────────────────────────────────
+let prev = 0;
+function render(ts) {
+  const dt = Math.min((ts - prev) * 0.001, 0.05);
+  prev = ts;
+
+  const speed = 0.45;
+  if (Math.abs(currentEmotion - targetEmotion) < 0.001) {
+    currentEmotion = targetEmotion;
+  } else {
+    currentEmotion += (targetEmotion - currentEmotion) * Math.min(dt * speed, 1.0);
+  }
+
+  updatePareidolia(dt);
+  updateShepherd(dt);
+  drawVortexCursor(dt);
+  updateAutoCursor(dt);
+
+  gl.uniform1f(U['u_time'],      ts * 0.001);
+  gl.uniform2f(U['u_res'],       canvas.width, canvas.height);
+  gl.uniform2f(U['u_mouse'],     mouse[0], mouse[1]);
+  gl.uniform1f(U['u_emotion'],   currentEmotion);
+  gl.uniform1f(U['u_par_phase'], parPhase);
+  gl.uniform1f(U['u_par_str'],   parStr);
+  gl.uniform1f(U['u_interact'],  mouseActive ? 1.0 : 0.0);
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  requestAnimationFrame(render);
+}
+
+requestAnimationFrame(render);
+updateStatusBar();
+</script>
+</body>
+</html>
